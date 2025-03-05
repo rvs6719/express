@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="auth-error" id="auth-error_alert">Вы неправильно ввели логин или пароль</div>
+    <div class="main-container">
+        <div class="auto-text">
+            Авторизация
+        </div>
+
+        <div class="input-container">
+            <div class="input-container1_field">
+                <label for="login-input" class="input_area-text">Логин</label>
+                <input type="text" id="login-input" class="input-area">
+                <label class="under_error" id="under_login-error"for="login-input"></label>
+            </div>
+        </div>
+
+        <div class="input-container1">
+            <div class="input-container1_field">
+                <label for="password-input" class="input_area-text">Пароль</label>
+                <input type="password" id="password-input" class="input-area">
+                <label class="under_error" id="under_password-error" for="password-input"></label>
+            </div>
+            <div class="view-button">
+                <button class="view-button_button" id="svg-button" onclick="viewPassword()"><img src="svg\eye_visible.svg" alt=""></button>
+            </div>
+
+        </div>
+
+        <div class="auth-button">
+            <button class= "auth-button_button" id="auth-button_btn">
+                Войти
+            </button>
+        </div>
+
+    </div>
+    <script src="/script.js"></script>
+</body>
+</html>
