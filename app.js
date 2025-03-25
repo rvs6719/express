@@ -1,23 +1,34 @@
 import express from 'express'
 import { randomUUID } from 'node:crypto'
 import cookieParser from 'cookie-parser'
+import jwt from "jsonwebtoken"
 const app = express()
 const port = 3000
+
+const SECRET = "rvs6719sidqwerty12345"
 
 let users = [
   {
     id: '1',
     login: 'admin',
-    password: 'admin'
+    password: 'admin',
+    role: 'admin'
   },
   {
     id: '2',
     login: 'user',
-    password: 'user'
+    password: 'user',
+    role: 'user'
+  },
+  {
+    id: '3',
+    login: 'staff',
+    password: 'staff',
+    role: 'staff'
   }
 ]
 
-let session = [];
+const session = [];
 
 app.use(express.static('public'));
 app.use(cookieParser());
@@ -42,15 +53,66 @@ app.get('/auth', (req, res) => {
     res.statusCode = 401;
     res.send("Неправильный логин или пароль");
   }
-  const sessionKey = randomUUID();
-  console.log(data.login);
-  session.push(sessionKey);
-  res.cookie("session", sessionKey, { path: "/", httpOnly: true });
+  //const sessionKey = randomUUID();
+  const token = jwt.sign(findedUser, SECRET);
+  console.log(token);
+  session.push(token);
+  res.cookie("session", token, { path: "/", httpOnly: true });
   res.statusCode = 301;
-  res.redirect("/second");
+  if(findedUser.role === "admin" || findedUser.role === "staff"){
+    res.redirect("/staff");
+  } else {
+    res.redirect("/all");
+  }
 
 
 })
+
+app.get('/staff', (req, res) => {
+  const token = req.cookies.session;
+  try {
+    jwt.verify(token, SECRET);
+    res.sendFile("staff.html", {root: "pages"})
+    return
+  } catch (e) {
+    console.log(e);
+    res.statusCode = 301;
+    res.redirect("/");
+    return;
+  }
+})
+
+app.get('/all', (req, res) => {
+  const token = req.cookies.session;
+  try {
+    jwt.verify(token, SECRET);
+    res.sendFile("all.html", {root: "pages"})
+    return
+  } catch (e) {
+    console.log(e);
+    res.statusCode = 301;
+    res.redirect("/");
+    return;
+  }
+
+})
+
+app.get('/logout', (req, res) => {
+  const sessionKey = req.cookies.session;
+  if(sessionKey === undefined){
+    res.redirect("/");
+    return;
+  }
+  const idx = session.findIndex((i) => i === sessionKey);
+  if(idx < 0){
+    res.redirect("/");
+    return;
+  }
+  session.splice(idx, 1);
+  res.clearCookie("session");
+  res.redirect("/");
+})
+
 
 app.get('/', (req, res) => {
   res.sendFile('autorization.html',  {root: "pages"});
