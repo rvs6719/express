@@ -2,76 +2,124 @@ import express from 'express'
 import { randomUUID } from 'node:crypto'
 import cookieParser from 'cookie-parser'
 import jwt from "jsonwebtoken"
-//import sha256 from 'js-sha256'
 import CryptoJS from 'crypto-js'
-//import sha256 from 'node:crypto';
 import {createHmac, createHash} from 'node:crypto'
-//import sha256 from 'crypto-js/sha256';
 const app = express()
 const port = 80
-
-const SECRET = "rvs6719sidqwerty12345"
-
-let users = [
-  {
-    id: '1',
-    login: 'admin',
-    password: 'admin',
-    role: 'admin'
-  },
-  {
-    id: '2',
-    login: 'user',
-    password: 'user',
-    role: 'user'
-  },
-  {
-    id: '3',
-    login: 'staff',
-    password: 'staff',
-    role: 'staff'
-  }
-]
+import { Pool } from 'pg';
 
 const session = [];
+
+const SECRET = "rvs6719sidqwerty12345"
 
 app.use(express.static('public'));
 app.use(cookieParser());
 
-app.get('/auth', (req, res) => {
+const pool = new Pool({
+  user: 'postgres',
+  host: '172.28.66.193',
+  database: 'postgres',
+  password: 'password',
+  port: 5432,
+});
+
+// let users = [];
+async function fetchUsers(login, password) {
+  try {
+    const res = await pool.query('SELECT * FROM Users WHERE login = $1 AND password = $2', [login, password]);
+    const found = res.rows;
+    if (found.length > 0) {
+      return found[0];
+    } else {
+      return null;
+    }
+  } catch (err) {
+    console.error('Error executing query', err.stack);
+    return null;
+  }
+}
+
+
+
+// let users = [
+//   {
+//     id: '1',
+//     login: 'admin',
+//     password: 'admin',
+//     role: 'admin'
+//   },
+//   {
+//     id: '2',
+//     login: 'user',
+//     password: 'user',
+//     role: 'user'
+//   },
+//   {
+//     id: '3',
+//     login: 'staff',
+//     password: 'staff',
+//     role: 'staff'
+//   }
+// ]
+//getUsers();
+
+
+
+
+
+
+app.get('/auth', async (req, res) => {
   const errors = {};
   const data = req.query;
-  if(!data.login ||!data.login?.length === 0){
+
+  if (!data.login || data.login.length === 0) {
     errors["login"] = "Вы не указали логин.";
   }
-  if(!data.password ||!data.password?.length === 0){
+
+  if (!data.password || data.password.length === 0) {
     errors["password"] = "Вы не указали пароль.";
   }
-  if(Object.keys(errors).length > 0){
+
+  if (Object.keys(errors).length > 0) {
+    res.status(400).send(errors);
+    return;
+  }
+
+  try {
+    const findedUser = await fetchUsers(data.login, data.password);
+    if (!findedUser) {
+      res.status(401).send("Неправильный логин или пароль");
+      return;
+    }
+
+    const token = jwt.sign(findedUser, SECRET);
+    console.log(token);
+    session.push(token);
+    res.cookie("session", token, { path: "/", httpOnly: true });
+    res.status(302);
+    if (findedUser.role === "admin" || findedUser.role === "staff") {
+      res.redirect("/staff");
+    } else {
+      res.redirect("/all");
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Произошла ошибка на сервере");
+  }
+});
+
+app.get('/profile', async (req, res) => {
+  const id = req.query.id;
+  if(!id){
     res.statusCode = 400;
-    res.send(errors);
+    res.send("Не указан id пользователя");
+    return;
   }
-  const findedUser = users.find(
-    (i) => i.login === data.login && i.password === data.password,
-  );
-  if(findedUser === undefined){
-    res.statusCode = 401;
-    res.send("Неправильный логин или пароль");
-  }
-  //const sessionKey = randomUUID();
-  const token = jwt.sign(findedUser, SECRET);
-  console.log(token);
-  session.push(token);
-  res.cookie("session", token, { path: "/", httpOnly: true });
-  res.statusCode = 301;
-  if(findedUser.role === "admin" || findedUser.role === "staff"){
-    res.redirect("/staff");
-  } else {
-    res.redirect("/all");
-  }
-
-
+  const user = await pool.query('SELECT * FROM users WHERE id = $1',[id]);
+  console.log(user.rows)
+  res.send({user : 1})
 })
+
 function decimalToHexString(number)
 {
   if (number < 0)
@@ -118,64 +166,6 @@ app.get('/telegram', (req, res) => {
   }else{
     res.send("Data incorrect!");
   }
-  /*const keys = Object.keys(userData).sort();
-  let str = '';
-  for (const key in keys) {
-      if (keys[key] !== 'hash') {
-          str += keys[key] + '=' + userData[keys[key]];
-          if (+key !== keys.length - 1) str += '\n';
-      }
-  }
-  //const data_check_string = 'auth_date='+req.query.auth_date+'\nfirst_name='+req.query.first_name+'\nid='+req.query.id+'\nphoto_url='+req.query.photo_url+'\nusername='+req.query.username+'';
-  const secret_key = sha256(botToken).digest();
-  const hash1 = CryptoJS.HmacSHA256(str, secret_key).digest('hex');
-  if (hash1 == userData.hash) {
-    res.send("Data correct");
-  }else{
-    res.send("Data incorrect!");
-  }
-  */
-  /*console.log(secret_key);
-  const data_check_string = 'auth_date='+req.query.auth_date+'\nfirst_name='+req.query.first_name+'\nid='+req.query.id+'\nphoto_url='+req.query.photo_url+'\nusername='+req.query.username+'';
-  const data_check_string1 = 'auth_date='+userData.auth_date+'\nfirst_name='+userData.first_name+'\nid='+userData.id+'\nphoto_url='+userData.photo_url+'\nusername='+userData.username+'';
-  const hash1 = CryptoJS.HmacSHA256(data_check_string, secret_key).toString(CryptoJS.enc.Hex);
-  console.log(userData);
-  console.log(data_check_string1);
-  console.log('1');
-  console.log(data_check_string);
-  console.log(sha256.hmac(secret_key, data_check_string));
-  console.log(decimalToHexString(sha256.hmac(secret_key, data_check_string )));
-  console.log(hash1);
-  if (decimalToHexString(sha256.hmac(secret_key, data_check_string )) == req.query.hash) {
-    res.send("Data correct");
-    console.log(decimalToHexString(sha256.hmac(secret_key, data_check_string)));
-    console.log(userData.hash);
-  }else{
-    res.send("Data incorrect!");
-    console.log(decimalToHexString(sha256.hmac(secret_key, data_check_string)));
-    console.log(userData.hash);
-  }
-  const userData1 = userData
-
-  // Удаляем строку hash
-  delete userData1.hash;
-
-  // Преобразуем данные в массив строк формата key=value
-  const sortedData = Object.entries(userData1)
-    .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
-    .map(([key, value]) => `${key}=${value}`);
-
-  // Объединяем строки в одну с разделителем \n
-  const result = sortedData.join('\n');
-
-  console.log(result);
-  if(result === data_check_string === data_check_string1){
-    console.log("yes")
-  }else{
-    console.log("no")
-  }
-  const hash2 = CryptoJS.HmacSHA256(result, secret_key).toString(CryptoJS.enc.Hex);
-  console.log(hash2);*/
 })
 
 app.get('/staff', (req, res) => {

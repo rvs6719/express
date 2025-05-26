@@ -75,6 +75,9 @@ function validate(){
     }else{
         under_password.innerText=''
     }
+    // if (errors.under_login != '' && errors.password_error != ''){
+    //     window.location.href = '/auth';
+    // }
     if(errors.auth_wrong){
         error_windowVisible()
         setTimeout(error_windowUnvisible, 2000);
